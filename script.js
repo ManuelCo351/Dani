@@ -1,147 +1,289 @@
-// 1. Datos simulados (Mockaroo / Supabase en el futuro)
-const mockData = [
-  { id: 1, nombre: "Ibuprofeno 600mg", categoria: "Medicamentos", stock: 150, costo: 1000, estado: "VIGENTE" },
-  { id: 2, nombre: "Protector Solar FPS50", categoria: "Dermocosmética", stock: 30, costo: 2500, estado: "PRÓXIMO" },
-  { id: 3, nombre: "Jarabe Antitusivo", categoria: "Medicamentos", stock: 10, costo: 640, estado: "VENCIDO" },
-  { id: 4, nombre: "Amoxicilina 500mg", categoria: "Medicamentos", stock: 80, costo: 1200, estado: "VIGENTE" }
-];
+// ==========================================
+// 1. CONFIGURACIÓN Y VARIABLES GLOBALES
+// ==========================================
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShUP7tNJU4WgCtbCh0okTb6VDwm7T1ixUY7IYheSPifL7t0XGSHo5D73ZQ1DoroPtKu67_JkZnFTJI/pub?gid=1721041411&single=true&output=csv';
 
-const MARKUP = 1.40; // 40% de margen de ganancia
+let inventarioGlobal = []; // Guardamos los datos acá para poder buscarlos después
+let miGraficoTorta = null;
 
-// 2. Funciones de Formateo y Renderizado
-function formatCurrency(value) {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
+// Elementos del DOM
+const btnDashboard = document.getElementById('btn-dashboard');
+const btnInventario = document.getElementById('btn-inventario');
+const vistaDashboard = document.getElementById('vista-dashboard');
+const vistaInventario = document.getElementById('vista-inventario');
+const searchInput = document.getElementById('searchInput');
+
+// ==========================================
+// 2. INICIALIZACIÓN Y ANIMACIONES DE CARGA
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  // Coreografía inicial con GSAP
+  const tl = gsap.timeline();
+
+  tl.from(".gsap-header", { y: -50, opacity: 0, duration: 0.6, ease: "power3.out" })
+    .from(".gsap-bento", { 
+      y: 30, 
+      opacity: 0, 
+      duration: 0.6, 
+      stagger: 0.1, // Hace que entren una tras otra
+      ease: "back.out(1.2)" 
+    }, "-=0.3")
+    .from(".gsap-nav", { y: 50, opacity: 0, duration: 0.5, ease: "power2.out" }, "-=0.4");
+
+  // Iniciar la carga de datos
+  cargarDatosGoogleSheets();
+});
+
+// ==========================================
+// 3. LECTURA DE DATOS (GOOGLE SHEETS)
+// ==========================================
+function cargarDatosGoogleSheets() {
+  Papa.parse(GOOGLE_SHEET_CSV_URL, {
+    download: true,
+    header: true,
+    dynamicTyping: true,
+    complete: function(results) {
+      // Limpiamos filas vacías
+      inventarioGlobal = results.data.filter(row => row.nombre_comercial);
+      
+      // Procesar y mostrar la info
+      procesarMetricasFinancieras(inventarioGlobal);
+      renderizarListaInventario(inventarioGlobal);
+    },
+    error: function(error) {
+      console.error("Error al cargar los datos:", error);
+      document.getElementById('product-list').innerHTML = `
+        <div class="bg-red-100 p-4 rounded-2xl text-red-600 text-center text-sm font-bold">
+          Error de conexión. Verificá que el link de Google Sheets sea público.
+        </div>`;
+    }
+  });
 }
 
-function renderDashboardMetrics(data) {
-  let capital = 0;
-  let ganancia = 0;
-  let mermas = 0;
+// ==========================================
+// 4. LÓGICA FINANCIERA Y RENDERIZADO
+// ==========================================
+function procesarMetricasFinancieras(data) {
+  let capitalTotal = 0;
+  let gananciaTotal = 0;
+  let mermasTotal = 0;
+  let conteoVigente = 0, conteoProximo = 0, conteoVencido = 0;
 
   data.forEach(item => {
-    const valorCosto = item.costo * item.stock;
-    const valorVenta = valorCosto * MARKUP;
+    let stock = Number(item.stock_actual) || 0;
+    let costoUnitario = Number(item.precio_costo) || 0;
+    let precioVenta = Number(item.precio_venta) || (costoUnitario * 1.4);
     
-    if (item.estado === "VENCIDO") {
-      mermas += valorCosto;
+    // Normalizar estado
+    let estadoCrudo = (item.estado_vencimiento || "VIGENTE").toString().toUpperCase();
+    let estadoLimpio = "VIGENTE";
+    if (estadoCrudo.includes("VENCIDO")) estadoLimpio = "VENCIDO";
+    else if (estadoCrudo.includes("PRÓXIMO") || estadoCrudo.includes("PROXIMO")) estadoLimpio = "PRÓXIMO";
+
+    // Cálculos
+    let valorCostoFila = costoUnitario * stock;
+    let valorVentaFila = precioVenta * stock;
+
+    if (estadoLimpio === "VENCIDO") {
+      mermasTotal += valorCostoFila; // Es pérdida
+      conteoVencido += stock;
     } else {
-      capital += valorCosto;
-      ganancia += (valorVenta - valorCosto);
+      capitalTotal += valorCostoFila;
+      gananciaTotal += (valorVentaFila - valorCostoFila);
+      
+      if (estadoLimpio === "VIGENTE") conteoVigente += stock;
+      else conteoProximo += stock;
     }
   });
 
-  // Animaciones de contadores con GSAP
-  gsap.to("#metric-capital", { innerHTML: capital, duration: 1.5, snap: { innerHTML: 1 }, onUpdate: function() { document.getElementById("metric-capital").innerHTML = formatCurrency(this.targets()[0].innerHTML); } });
-  gsap.to("#metric-ganancia", { innerHTML: ganancia, duration: 1.5, snap: { innerHTML: 1 }, onUpdate: function() { document.getElementById("metric-ganancia").innerHTML = formatCurrency(this.targets()[0].innerHTML); } });
-  gsap.to("#metric-mermas", { innerHTML: mermas, duration: 1.5, snap: { innerHTML: 1 }, onUpdate: function() { document.getElementById("metric-mermas").innerHTML = "-" + formatCurrency(this.targets()[0].innerHTML); } });
+  // Animar los números del Dashboard con GSAP
+  animarNumero("#val-capital", capitalTotal);
+  animarNumero("#val-ganancia", gananciaTotal);
+  animarNumero("#val-mermas", mermasTotal, true); // true para que le ponga el signo menos
+
+  actualizarGraficoTorta(conteoVigente, conteoProximo, conteoVencido);
 }
 
-function renderProductList(data) {
+// Función auxiliar para animar los números como un cuentakilómetros
+function animarNumero(selector, valorFinal, esNegativo = false) {
+  const formatoPesos = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
+  
+  gsap.to(selector, {
+    innerHTML: valorFinal,
+    duration: 1.5,
+    snap: { innerHTML: 1 },
+    ease: "power2.out",
+    onUpdate: function() {
+      let numeroActual = this.targets()[0].innerHTML;
+      let texto = formatoPesos.format(numeroActual);
+      document.querySelector(selector).innerHTML = esNegativo ? `-${texto}` : texto;
+    }
+  });
+}
+
+// ==========================================
+// 5. RENDERIZADO DE LA LISTA DE INVENTARIO
+// ==========================================
+function renderizarListaInventario(data) {
   const container = document.getElementById('product-list');
-  container.innerHTML = ''; // Limpiar lista
+  container.innerHTML = ''; // Borra el skeleton loader
 
-  data.forEach(item => {
-    let badgeColor = item.estado === 'VIGENTE' ? 'bg-green-100 text-green-800' : 
-                     item.estado === 'PRÓXIMO' ? 'bg-amber-100 text-amber-800' : 
-                     'bg-red-100 text-red-800';
+  if (data.length === 0) {
+    container.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">No se encontraron productos.</p>';
+    return;
+  }
 
-    let borderColor = item.estado === 'VIGENTE' ? 'border-green-500' : 
-                      item.estado === 'PRÓXIMO' ? 'border-amber-500' : 
-                      'border-red-500';
+  data.forEach((item, index) => {
+    let nombre = item.nombre_comercial || "Desconocido";
+    let categoria = item.categoria || "S/C";
+    let stock = Number(item.stock_actual) || 0;
+    let precio = Number(item.precio_venta) || (Number(item.precio_costo) * 1.4);
+    
+    let estadoCrudo = (item.estado_vencimiento || "VIGENTE").toString().toUpperCase();
+    let estadoLimpio = "VIGENTE";
+    if (estadoCrudo.includes("VENCIDO")) estadoLimpio = "VENCIDO";
+    else if (estadoCrudo.includes("PRÓXIMO") || estadoCrudo.includes("PROXIMO")) estadoLimpio = "PRÓXIMO";
+
+    // Configuramos colores según el estado
+    let bgIcono, colorTexto, badgeColor;
+    if (estadoLimpio === "VIGENTE") {
+      bgIcono = "bg-teal-100"; colorTexto = "text-teal-600"; badgeColor = "bg-teal-100 text-teal-700 border-teal-200";
+    } else if (estadoLimpio === "PRÓXIMO") {
+      bgIcono = "bg-amber-100"; colorTexto = "text-amber-600"; badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
+    } else {
+      bgIcono = "bg-red-100"; colorTexto = "text-red-600"; badgeColor = "bg-red-100 text-red-700 border-red-200";
+    }
+
+    const formatoPesos = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
 
     const card = document.createElement('div');
-    card.className = `bg-white p-4 rounded-xl shadow-sm product-card border-l-4 ${borderColor}`;
-    
+    card.className = "gsap-item bg-white/80 backdrop-blur-sm p-4 rounded-3xl shadow-glass border border-white flex items-center gap-4";
+    if (estadoLimpio === "VENCIDO") card.style.opacity = "0.6";
+
     card.innerHTML = `
-      <div class="flex justify-between items-start mb-2">
-        <div>
-          <h3 class="font-bold text-gray-800 leading-tight">${item.nombre}</h3>
-          <p class="text-xs text-gray-500">${item.categoria}</p>
-        </div>
-        <span class="px-2 py-1 text-[10px] font-bold rounded-md ${badgeColor}">${item.estado}</span>
+      <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${bgIcono}">
+        <svg class="w-6 h-6 ${colorTexto}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
       </div>
-      <div class="flex justify-between items-end mt-3 border-t border-gray-100 pt-2">
-        <div>
-          <p class="text-xs text-gray-400">Stock: <span class="font-bold text-gray-700">${item.stock} u.</span></p>
+      <div class="flex-1 min-w-0">
+        <h4 class="font-bold text-dark truncate ${estadoLimpio === 'VENCIDO' ? 'line-through text-gray-400' : ''}">${nombre}</h4>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-[10px] uppercase font-bold text-gray-500">${categoria}</span>
+          <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}">${estadoLimpio}</span>
         </div>
-        <div class="text-right">
-          <p class="text-xs text-gray-400">PVP (+40%)</p>
-          <p class="font-bold text-teal-700">${formatCurrency(item.costo * MARKUP)}</p>
-        </div>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <p class="font-black text-dark ${estadoLimpio === 'VENCIDO' ? 'line-through text-gray-400' : ''}">${formatoPesos.format(precio)}</p>
+        <p class="text-[10px] font-bold text-gray-400 mt-1">Stock: ${stock}</p>
       </div>
     `;
     container.appendChild(card);
   });
-}
 
-// 3. Gráfico Chart.js
-function initChart(data) {
-  const ctx = document.getElementById('riskChart').getContext('2d');
-  const conteo = { VIGENTE: 0, PRÓXIMO: 0, VENCIDO: 0 };
-  
-  data.forEach(item => conteo[item.estado] += item.stock);
-
-  new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Vigente', 'Próximo a Vencer', 'Vencido'],
-      datasets: [{
-        data: [conteo.VIGENTE, conteo.PRÓXIMO, conteo.VENCIDO],
-        backgroundColor: ['#10B981', '#F59E0B', '#EF4444'], // Colores Tailwind
-        borderWidth: 0,
-        hoverOffset: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } },
-      cutout: '70%'
-    }
+  // Animar entrada de la lista
+  gsap.from(".gsap-item", {
+    opacity: 0,
+    y: 20,
+    duration: 0.4,
+    stagger: 0.05,
+    ease: "power2.out"
   });
 }
 
-// 4. Lógica de Navegación (SPA Routing)
-function setupNavigation() {
-  const btnDashboard = document.getElementById('btn-dashboard');
-  const btnInventario = document.getElementById('btn-inventario');
-  const vistaDashboard = document.getElementById('vista-dashboard');
-  const vistaInventario = document.getElementById('vista-inventario');
+// ==========================================
+// 6. BUSCADOR (Filtro en tiempo real)
+// ==========================================
+searchInput.addEventListener('input', (e) => {
+  const termino = e.target.value.toLowerCase();
+  const resultados = inventarioGlobal.filter(item => {
+    return (item.nombre_comercial && item.nombre_comercial.toLowerCase().includes(termino)) || 
+           (item.categoria && item.categoria.toLowerCase().includes(termino));
+  });
+  renderizarListaInventario(resultados);
+});
 
-  function cambiarVista(vistaActiva) {
-    if (vistaActiva === 'dashboard') {
-      vistaDashboard.classList.remove('hidden');
-      vistaInventario.classList.add('hidden');
-      
-      btnDashboard.classList.replace('text-gray-400', 'text-teal-600');
-      btnInventario.classList.replace('text-teal-600', 'text-gray-400');
+// ==========================================
+// 7. GRÁFICO (Chart.js)
+// ==========================================
+function actualizarGraficoTorta(vigente, proximo, vencido) {
+  const ctx = document.getElementById('donutChart');
+  if (miGraficoTorta) miGraficoTorta.destroy();
+
+  miGraficoTorta = new Chart(ctx, { 
+    type: 'doughnut', 
+    data: { 
+      labels: ['Vigente', 'Próximo', 'Vencido'], 
+      datasets: [{ 
+        data: [vigente, proximo, vencido], 
+        backgroundColor: ['#00a3a3', '#d97706', '#dc2626'], // Teal, Amber, Red
+        borderWidth: 0,
+        hoverOffset: 5
+      }] 
+    }, 
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false, 
+      cutout: '75%', 
+      plugins: { 
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          padding: 10,
+          cornerRadius: 12
+        }
+      },
+      animation: {
+        animateScale: true,
+        animateRotate: true,
+        duration: 1500,
+        easing: 'easeOutQuart'
+      }
     } 
-    else if (vistaActiva === 'inventario') {
-      vistaInventario.classList.remove('hidden');
-      vistaDashboard.classList.add('hidden');
-      
-      btnInventario.classList.replace('text-gray-400', 'text-teal-600');
-      btnDashboard.classList.replace('text-teal-600', 'text-gray-400');
-      
-      // Animamos la lista de productos al entrar a esta vista
-      gsap.from(".product-card", { opacity: 0, y: 20, duration: 0.4, stagger: 0.1, ease: "power1.out", clearProps: "all" });
-    }
-  }
-
-  btnDashboard.addEventListener('click', () => cambiarVista('dashboard'));
-  btnInventario.addEventListener('click', () => cambiarVista('inventario'));
+  });
 }
 
-// 5. Inicialización al cargar el DOM
-document.addEventListener("DOMContentLoaded", () => {
-  // Animaciones iniciales GSAP para el dashboard
-  gsap.from(".gsap-header", { y: -50, opacity: 0, duration: 0.8, ease: "power2.out" });
-  gsap.from(".metric-card", { opacity: 0, scale: 0.9, duration: 0.6, stagger: 0.1, delay: 0.3 });
-  gsap.from(".chart-container", { opacity: 0, x: -20, duration: 0.6, delay: 0.5 });
+// ==========================================
+// 8. LÓGICA DE NAVEGACIÓN SPA (Routing y UI de Botones)
+// ==========================================
+function activarBotonNav(btnActivo, btnInactivo) {
+  // Activar
+  btnActivo.classList.remove('text-gray-400', 'bg-transparent');
+  btnActivo.classList.add('bg-teal-500', 'text-white');
+  btnActivo.querySelector('span').classList.remove('w-0', 'opacity-0');
+  btnActivo.querySelector('span').classList.add('w-16', 'opacity-100', 'ml-2');
 
-  // Ejecutar funciones
-  renderDashboardMetrics(mockData);
-  renderProductList(mockData);
-  initChart(mockData);
-  setupNavigation();
+  // Desactivar
+  btnInactivo.classList.remove('bg-teal-500', 'text-white');
+  btnInactivo.classList.add('text-gray-400', 'bg-transparent');
+  btnInactivo.querySelector('span').classList.add('w-0', 'opacity-0');
+  btnInactivo.querySelector('span').classList.remove('w-16', 'opacity-100', 'ml-2');
+}
+
+btnDashboard.addEventListener('click', () => {
+  if (!vistaDashboard.classList.contains('hidden')) return; // Ya estamos acá
+  
+  activarBotonNav(btnDashboard, btnInventario);
+  
+  // Transición suave
+  gsap.to(vistaInventario, { opacity: 0, y: 10, duration: 0.2, onComplete: () => {
+    vistaInventario.classList.add('hidden');
+    vistaDashboard.classList.remove('hidden');
+    gsap.fromTo(vistaDashboard, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3 });
+  }});
 });
+
+btnInventario.addEventListener('click', () => {
+  if (!vistaInventario.classList.contains('hidden')) return; // Ya estamos acá
+  
+  activarBotonNav(btnInventario, btnDashboard);
+  
+  // Transición suave
+  gsap.to(vistaDashboard, { opacity: 0, y: -10, duration: 0.2, onComplete: () => {
+    vistaDashboard.classList.add('hidden');
+    vistaInventario.classList.remove('hidden');
+    gsap.fromTo(vistaInventario, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 });
+    
+    // Re-animar la lista al entrar
+    gsap.from(".gsap-item", { opacity: 0, y: 20, duration: 0.4, stagger: 0.05, clearProps: "all" });
+  }});
+});
+                                                
