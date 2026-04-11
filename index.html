@@ -171,8 +171,6 @@ function cambiarVista(vista) {
   if (vista === 'dashboard') {
     vistaDashboard.classList.remove('hidden');
     vistaInventario.classList.add('hidden');
-    
-    // Cambiar estilos de botones
     btnDashboard.querySelector('svg').setAttribute('stroke', '#008080');
     btnDashboard.querySelector('span').classList.add('active');
     btnInventario.querySelector('svg').setAttribute('stroke', '#999');
@@ -180,8 +178,6 @@ function cambiarVista(vista) {
   } else {
     vistaInventario.classList.remove('hidden');
     vistaDashboard.classList.add('hidden');
-    
-    // Cambiar estilos de botones
     btnInventario.querySelector('svg').setAttribute('stroke', '#008080');
     btnInventario.querySelector('span').classList.add('active');
     btnDashboard.querySelector('svg').setAttribute('stroke', '#999');
@@ -195,32 +191,23 @@ btnInventario.addEventListener('click', () => cambiarVista('inventario'));
 // ==========================================
 // 2. LECTURA DE DATOS (GOOGLE SHEETS)
 // ==========================================
-
-// LINK DE EJEMPLO: Esto lo cambiarás por el link de tu Google Sheet publicado como CSV
-const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShUP7tNJU4WgCtbCh0okTb6VDwm7T1ixUY7IYheSPifL7t0XGSHo5D73ZQ1DoroPtKu67_JkZnFTJI/pubhtml?gid=1721041411&single=true';
-
-// Si el fetch falla (porque el link de arriba es falso), usamos estos datos de respaldo
-const mockFallbackData = [
-  { nombre: "Ibuprofeno 600mg", categoria: "Medicamentos", stock: 150, costo: 1000, estado: "VIGENTE" },
-  { nombre: "Protector Solar FPS50", categoria: "Dermocosmética", stock: 30, costo: 2500, estado: "PRÓXIMO" },
-  { nombre: "Jarabe Antitusivo", categoria: "Medicamentos", stock: 10, costo: 900, estado: "VENCIDO" }
-];
+// Link ajustado para descargar formato CSV
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShUP7tNJU4WgCtbCh0okTb6VDwm7T1ixUY7IYheSPifL7t0XGSHo5D73ZQ1DoroPtKu67_JkZnFTJI/pub?gid=1721041411&single=true&output=csv';
 
 function cargarDatos() {
   Papa.parse(GOOGLE_SHEET_CSV_URL, {
     download: true,
     header: true,
-    dynamicTyping: true, // Convierte números automáticamente
+    dynamicTyping: true, 
     complete: function(results) {
-      // Si la carga fue exitosa, renderizamos
       let data = results.data;
-      // Filtramos filas vacías
-      data = data.filter(row => row.nombre); 
+      // Filtramos filas vacías usando tu columna 'nombre_comercial'
+      data = data.filter(row => row.nombre_comercial); 
       renderizarApp(data);
     },
     error: function(err) {
-      console.log("No se pudo leer el CSV. Usando datos de prueba...");
-      renderizarApp(mockFallbackData);
+      console.log("Error leyendo el Google Sheet. Revisá que esté publicado en la web.");
+      document.getElementById('product-list').innerHTML = '<p style="text-align:center; color:red; margin-top:20px;">Error al cargar la base de datos.</p>';
     }
   });
 }
@@ -231,60 +218,120 @@ function cargarDatos() {
 function renderizarApp(data) {
   let capitalTotal = 0;
   let gananciaTotal = 0;
-  const MARKUP = 1.4; // 40%
+  let conteoVigente = 0, conteoProximo = 0, conteoVencido = 0; // Para el gráfico
+  
   const productList = document.getElementById('product-list');
-  productList.innerHTML = ''; // Limpiar "Cargando..."
+  productList.innerHTML = ''; 
 
   data.forEach(item => {
-    // Cálculos Financieros
-    let costoUnitario = Number(item.costo) || 0;
-    let stock = Number(item.stock) || 0;
-    let precioVenta = costoUnitario * MARKUP;
+    // 1. Mapear tus columnas exactas
+    let nombre = item.nombre_comercial || "Sin nombre";
+    let categoria = item.categoria || "Sin categoría";
+    let stock = Number(item.stock_actual) || 0;
+    let costoUnitario = Number(item.precio_costo) || 0;
     
-    capitalTotal += (costoUnitario * stock);
-    gananciaTotal += ((precioVenta - costoUnitario) * stock);
+    // Si la hoja ya tiene precio de venta lo usamos, si no, calculamos el 40% (markup)
+    let precioVenta = Number(item.precio_venta) || (costoUnitario * 1.4);
+    
+    // Normalizar el estado por si hay espacios o mayúsculas distintas en Mockaroo
+    let estadoCrudo = (item.estado_vencimiento || "VIGENTE").toString().toUpperCase();
+    let estadoLimpio = "VIGENTE";
+    if (estadoCrudo.includes("VENCIDO")) estadoLimpio = "VENCIDO";
+    else if (estadoCrudo.includes("PRÓXIMO") || estadoCrudo.includes("PROXIMO")) estadoLimpio = "PRÓXIMO";
 
-    // Creación de tarjetas de inventario usando TU CSS exacto
-    let colorIcono, strokeIcono, colorBadge, claseBadge;
+    // 2. Cálculos Financieros
+    capitalTotal += (costoUnitario * stock);
+    if (estadoLimpio !== "VENCIDO") {
+      gananciaTotal += ((precioVenta - costoUnitario) * stock);
+    }
+
+    // Sumar al gráfico
+    if (estadoLimpio === "VIGENTE") conteoVigente += stock;
+    else if (estadoLimpio === "PRÓXIMO") conteoProximo += stock;
+    else conteoVencido += stock;
+
+    // 3. Estilos de la tarjeta según estado
+    let colorIcono, strokeIcono, claseBadge;
     let nombreClase = "item-name";
     let precioClase = "item-price";
     
-    if (item.estado === "VIGENTE") {
+    if (estadoLimpio === "VIGENTE") {
       colorIcono = "#e8f4f0"; strokeIcono = "#008080"; claseBadge = "sb-green";
-    } else if (item.estado === "PRÓXIMO") {
+    } else if (estadoLimpio === "PRÓXIMO") {
       colorIcono = "#fffbeb"; strokeIcono = "#d97706"; claseBadge = "sb-amber";
     } else {
       colorIcono = "#fef2f2"; strokeIcono = "#dc2626"; claseBadge = "sb-red";
-      nombreClase += " strike"; precioClase += " strike"; // Tachado para vencidos
+      nombreClase += " strike"; precioClase += " strike";
     }
 
     const card = document.createElement('div');
     card.className = "stock-item";
-    if (item.estado === "VENCIDO") card.style.opacity = "0.7";
+    if (estadoLimpio === "VENCIDO") card.style.opacity = "0.7";
 
     card.innerHTML = `
       <div class="item-icon" style="background:${colorIcono}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${strokeIcono}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
       </div>
       <div class="item-body">
-        <div class="${nombreClase}">${item.nombre}</div>
-        <div class="item-cat">${item.categoria}</div>
-        <span class="status-badge ${claseBadge}">${item.estado}</span>
+        <div class="${nombreClase}">${nombre}</div>
+        <div class="item-cat">${categoria}</div>
+        <span class="status-badge ${claseBadge}">${estadoLimpio}</span>
       </div>
       <div class="item-right">
-        <div class="${precioClase}">$${precioVenta.toLocaleString('es-AR')}</div>
+        <div class="${precioClase}">$${precioVenta.toLocaleString('es-AR', {maximumFractionDigits: 0})}</div>
         <div class="item-stock">Stock: ${stock} u.</div>
       </div>
     `;
     productList.appendChild(card);
   });
 
-  // Actualizar métricas en el Dashboard
-  document.getElementById('val-capital').innerText = "$" + capitalTotal.toLocaleString('es-AR');
-  document.getElementById('val-ganancia').innerText = "$" + gananciaTotal.toLocaleString('es-AR');
+  // 4. Actualizar métricas visuales
+  document.getElementById('val-capital').innerText = "$" + capitalTotal.toLocaleString('es-AR', {maximumFractionDigits: 0});
+  document.getElementById('val-ganancia').innerText = "$" + gananciaTotal.toLocaleString('es-AR', {maximumFractionDigits: 0});
+
+  // 5. Actualizar Gráfico de Torta real con los datos
+  actualizarGraficoTorta(conteoVigente, conteoProximo, conteoVencido);
 }
 
-// Inicializar Gráficos estáticos (Tus sparklines originales)
+// ==========================================
+// 4. GRÁFICOS (Chart.js)
+// ==========================================
+let miGraficoTorta = null;
+
+function actualizarGraficoTorta(vigente, proximo, vencido) {
+  const total = vigente + proximo + vencido;
+  if (total === 0) return; // Evitar dividir por cero si no hay datos
+
+  const pVigente = Math.round((vigente / total) * 100);
+  const pProximo = Math.round((proximo / total) * 100);
+  const pVencido = Math.round((vencido / total) * 100);
+
+  const ctx = document.getElementById('donutChart');
+  
+  if (miGraficoTorta) {
+    miGraficoTorta.destroy(); // Destruimos el anterior para redibujarlo con los nuevos datos
+  }
+
+  miGraficoTorta = new Chart(ctx, { 
+    type: 'doughnut', 
+    data: { 
+      labels: [`Vigente (${pVigente}%)`, `Próximo (${pProximo}%)`, `Vencido (${pVencido}%)`], 
+      datasets: [{ 
+        data: [vigente, proximo, vencido], 
+        backgroundColor: ['#16a34a', '#d97706', '#dc2626'], 
+        borderWidth: 3 
+      }] 
+    }, 
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false, 
+      cutout: '62%', 
+      plugins: { legend: { display: false } } 
+    } 
+  });
+}
+
+// Sparklines decorativos
 function sparkline(id, data, color) {
   const ctx = document.getElementById(id);
   if (!ctx) return;
@@ -293,10 +340,9 @@ function sparkline(id, data, color) {
 sparkline('spark1', [2.1,2.2,2.0,2.3,2.4,2.35,2.5], '#008080');
 sparkline('spark2', [0.85,0.9,0.88,0.95,0.97,0.99,1.0], '#16a34a');
 
-new Chart(document.getElementById('donutChart'), { type: 'doughnut', data: { labels: ['Vigente (75%)', 'Próximo (20%)', 'Vencido (5%)'], datasets: [{ data: [75, 20, 5], backgroundColor: ['#16a34a', '#d97706', '#dc2626'], borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { display: false } } } });
-
 // Arrancar la app
 cargarDatos();
+  
 </script>
 </body>
 </html>
