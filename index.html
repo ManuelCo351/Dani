@@ -1,348 +1,152 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DR Farmacias - App</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DR Farmacias - Sistema Inteligente</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
-<style>
-/* TUS ESTILOS INTACTOS */
-*{box-sizing:border-box;margin:0;padding:0}
-.phone-wrap{display:flex;justify-content:center;align-items:flex-start;padding:2rem 1rem;background:linear-gradient(135deg,#e8f4f0 0%,#f0ede0 100%)}
-.phone{width:375px;min-height:820px;background:#f5f5dc;border-radius:44px;border:10px solid #1a1a1a;box-shadow:0 0 0 2px #333,0 32px 64px rgba(0,0,0,0.35),inset 0 0 0 1px rgba(255,255,255,0.08);overflow:hidden;position:relative;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:126px;height:28px;background:#1a1a1a;border-radius:0 0 18px 18px;z-index:20}
-.statusbar{background:#008080;padding:10px 20px 6px;display:flex;justify-content:space-between;align-items:center;padding-top:30px}
-.status-time{color:#fff;font-size:13px;font-weight:600;letter-spacing:0.2px}
-.status-icons{display:flex;align-items:center;gap:5px}
-.signal-bar{display:flex;align-items:flex-end;gap:1.5px;height:12px}
-.sb{background:#fff;border-radius:1px;width:3px}
-.header{background:#008080;padding:10px 16px 14px;display:flex;justify-content:space-between;align-items:center}
-.header-title{color:#fff}
-.header-title h1{font-size:15px;font-weight:600;letter-spacing:0.1px}
-.header-title p{font-size:11px;color:rgba(255,255,255,0.75);margin-top:1px}
-.avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,0.5)}
-.avatar svg{width:18px;height:18px}
-.scroll-body{height:640px;overflow-y:auto;padding:12px;padding-bottom:0}
-.scroll-body::-webkit-scrollbar{display:none}
-.section-label{font-size:11px;font-weight:600;color:#008080;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;margin-top:4px}
-.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.metric-card{background:#fff;border-radius:12px;padding:10px 12px;border:0.5px solid rgba(0,128,128,0.15);position:relative;overflow:hidden}
-.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:#008080;border-radius:12px 12px 0 0}
-.mc-label{font-size:10px;color:#008080;font-weight:600;letter-spacing:0.3px;margin-bottom:4px}
-.mc-value{font-size:20px;font-weight:700;color:#1a1a1a;line-height:1.1}
-.mc-sub{font-size:10px;color:#666;margin-top:3px}
-.mc-trend{display:flex;align-items:center;gap:3px;margin-top:5px}
-.trend-up{color:#16a34a;font-size:10px;font-weight:600}
-.trend-down{color:#dc2626;font-size:10px;font-weight:600}
-.sparkline-wrap{height:28px;margin-top:6px}
-.badge-expired{background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;display:inline-block}
-.badge-upcoming{background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;display:inline-block;margin-top:3px}
-.chart-card{background:#fff;border-radius:12px;padding:12px;border:0.5px solid rgba(0,128,128,0.15);margin-bottom:10px}
-.chart-title{font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:8px}
-.chart-sub{font-size:10px;color:#666;margin-bottom:10px;margin-top:-5px}
-.donut-wrap{position:relative;width:100%;height:180px}
-.donut-legend{display:flex;flex-direction:column;gap:5px;margin-top:8px}
-.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:#444}
-.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-.bar-wrap{position:relative;width:100%;height:160px}
-.search-bar{background:#fff;border:1.5px solid #008080;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.search-bar input{border:none;outline:none;font-size:13px;color:#1a1a1a;background:transparent;width:100%;font-family:inherit}
-.search-bar input::placeholder{color:#999}
-.stock-list{display:flex;flex-direction:column;gap:8px;padding-bottom:70px}
-.stock-item{background:#fff;border-radius:12px;padding:11px 12px;border:0.5px solid rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
-.item-icon{width:36px;height:36px;border-radius:9px;background:#e8f4f0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.item-body{flex:1;min-width:0}
-.item-name{font-size:13px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.item-cat{font-size:10px;color:#008080;margin-top:1px}
-.item-right{text-align:right;flex-shrink:0}
-.item-price{font-size:13px;font-weight:700;color:#1a1a1a}
-.item-stock{font-size:10px;color:#666;margin-top:1px}
-.status-badge{font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;display:inline-block;margin-top:5px;letter-spacing:0.4px}
-.sb-green{background:#dcfce7;color:#166534}
-.sb-amber{background:#fef3c7;color:#92400e}
-.sb-red{background:#fee2e2;color:#991b1b}
-.item-name.strike{text-decoration:line-through;color:#999}
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:355px;background:#fff;border-top:0.5px solid rgba(0,0,0,0.1);display:flex;justify-content:space-around;align-items:center;padding:8px 0 14px;z-index:30;border-radius:0 0 34px 34px}
-.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:2px 16px}
-.nav-label{font-size:9px;color:#999;font-weight:500}
-.nav-label.active{color:#008080;font-weight:700}
-.nav-icon{width:20px;height:20px;opacity:0.4}
-.nav-icon.active{opacity:1}
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            teal: { 500: '#00a3a3', 600: '#008080', 700: '#005959', 900: '#003333' },
+            beige: { 50: '#FDFDF6', 100: '#F5F5DC', 200: '#E8E8CA' },
+            dark: '#121212'
+          },
+          borderRadius: {
+            '4xl': '2rem',
+            '5xl': '2.5rem'
+          },
+          boxShadow: {
+            'soft': '0 10px 40px -10px rgba(0,128,128,0.1)',
+            'glass': '0 8px 32px 0 rgba(0,0,0,0.05)'
+          }
+        }
+      }
+    }
+  </script>
 
-/* NUEVA CLASE PARA OCULTAR VISTAS */
-.hidden { display: none !important; }
-</style>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="bg-beige-50 text-dark font-sans antialiased overflow-x-hidden selection:bg-teal-600 selection:text-beige-50">
 
-<div class="phone-wrap">
-  <div class="phone">
-    <div class="notch"></div>
+  <div class="max-w-md mx-auto min-h-screen bg-beige-100 relative pb-28 shadow-2xl overflow-hidden">
+    
+    <div class="absolute top-[-10%] left-[-20%] w-72 h-72 bg-teal-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+    <div class="absolute top-[20%] right-[-20%] w-72 h-72 bg-beige-200/60 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
 
-    <div class="statusbar">
-      <span class="status-time">10:09</span>
-      <div class="status-icons">
-        <div class="signal-bar">
-          <div class="sb" style="height:4px"></div>
-          <div class="sb" style="height:6px"></div>
-          <div class="sb" style="height:9px"></div>
-          <div class="sb" style="height:12px"></div>
-        </div>
-        <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><rect x="0.5" y="2.5" width="11" height="8" rx="1.5" stroke="white" stroke-width="1.2"/><rect x="2" y="4" width="8" height="5" rx="0.5" fill="white"/><path d="M12.5 4.5 L13.5 5 L13.5 7 L12.5 7.5" stroke="white" stroke-width="1" stroke-linecap="round"/></svg>
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="white"><path d="M6 1.5c2.485 0 4.5 2.015 4.5 4.5S8.485 10.5 6 10.5 1.5 8.485 1.5 6 3.515 1.5 6 1.5zM6 0C2.686 0 0 2.686 0 6s2.686 6 6 6 6-2.686 6-6S9.314 0 6 0z"/><path d="M6 2.5c-.345 0-.68.04-1 .118V6.5l2.5 1.5.5-.866L6.5 6V3.518A3.502 3.502 0 006 2.5z" fill="rgba(255,255,255,0.6)"/></svg>
-      </div>
-    </div>
-
-    <div class="header">
-      <div class="header-title">
-        <h1>DR Farmacias</h1>
-        <p>Conectado a Google Sheets</p>
-      </div>
-      <div class="avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      </div>
-    </div>
-
-    <div class="scroll-body">
-
-      <div id="vista-dashboard">
-        <p class="section-label" style="margin-top:10px">Métricas Financieras</p>
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="mc-label">Capital Inmovilizado</div>
-            <div class="mc-value" id="val-capital">$0</div>
-            <div class="mc-sub">Costo total inventario</div>
-            <div class="sparkline-wrap"><canvas id="spark1" height="28"></canvas></div>
-          </div>
-          <div class="metric-card">
-            <div class="mc-label">Ganancia Proyectada</div>
-            <div class="mc-value" id="val-ganancia" style="font-size:18px">$0</div>
-            <div class="mc-sub">Markup 40% aplicado</div>
-            <div class="sparkline-wrap"><canvas id="spark2" height="28"></canvas></div>
+    <header class="sticky top-0 z-50 px-6 py-5 bg-white/60 backdrop-blur-md border-b border-white/40 gsap-header">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-2xl font-extrabold tracking-tight text-teal-900">DR Farmacias</h1>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500"></span>
+            </span>
+            <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider">Sync: Google Sheets</p>
           </div>
         </div>
-
-        <p class="section-label">Riesgo por Vencimiento</p>
-        <div class="chart-card">
-          <div class="chart-title">Riesgo de inventario por vencimiento</div>
-          <div class="donut-wrap"><canvas id="donutChart"></canvas></div>
+        <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-teal-600 to-teal-400 p-[2px] shadow-soft">
+          <div class="w-full h-full bg-beige-50 rounded-full flex items-center justify-center border-2 border-transparent">
+            <span class="text-sm font-black text-teal-700">DR</span>
+          </div>
         </div>
+      </div>
+    </header>
+
+    <main class="relative z-10 px-4 pt-6">
+
+      <div id="vista-dashboard" class="grid grid-cols-2 gap-4">
+        
+        <div class="col-span-2 bg-white/80 backdrop-blur-sm p-6 rounded-4xl shadow-glass border border-white gsap-bento">
+          <p class="text-xs font-semibold text-teal-600 uppercase tracking-widest mb-1">Capital Inmovilizado</p>
+          <h2 class="text-4xl font-black text-teal-900 tracking-tighter" id="val-capital">$0</h2>
+          <p class="text-xs text-gray-500 mt-2 font-medium">Costo de droguería total</p>
+        </div>
+
+        <div class="col-span-1 bg-gradient-to-br from-teal-600 to-teal-800 p-5 rounded-4xl shadow-soft text-beige-50 gsap-bento">
+          <div class="bg-white/20 w-8 h-8 rounded-full flex items-center justify-center mb-3 backdrop-blur-md">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+          </div>
+          <p class="text-[10px] font-bold text-teal-100 uppercase tracking-wider mb-1">Ganancia (+40%)</p>
+          <h3 class="text-xl font-extrabold tracking-tight" id="val-ganancia">$0</h3>
+        </div>
+
+        <div class="col-span-1 bg-white/80 backdrop-blur-sm p-5 rounded-4xl shadow-glass border border-white gsap-bento">
+          <div class="bg-red-100 w-8 h-8 rounded-full flex items-center justify-center mb-3">
+            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">Riesgo Vencido</p>
+          <h3 class="text-xl font-extrabold text-red-600 tracking-tight" id="val-mermas">$0</h3>
+        </div>
+
+        <div class="col-span-2 bg-white/80 backdrop-blur-sm p-6 rounded-4xl shadow-glass border border-white mt-2 gsap-bento">
+          <div class="flex justify-between items-end mb-4">
+            <div>
+              <h3 class="font-bold text-teal-900">Salud del Inventario</h3>
+              <p class="text-xs text-gray-500 font-medium">Distribución por vencimiento</p>
+            </div>
+          </div>
+          <div class="relative h-48 w-full flex items-center justify-center">
+            <canvas id="donutChart"></canvas>
+          </div>
+        </div>
+
       </div>
 
       <div id="vista-inventario" class="hidden">
-        <p class="section-label" style="margin-top:10px">Control de Stock Inteligente</p>
-        <div class="search-bar">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#008080" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" placeholder="Buscar producto...">
+        
+        <div class="sticky top-20 z-40 pb-4 gsap-inv-header">
+          <div class="relative bg-white/90 backdrop-blur-md rounded-2xl shadow-glass border border-white p-2 flex items-center">
+            <svg class="w-5 h-5 text-teal-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="searchInput" placeholder="Buscar medicamento o categoría..." class="w-full bg-transparent border-none focus:ring-0 text-sm font-medium text-dark px-3 py-2 placeholder-gray-400 outline-none">
+          </div>
         </div>
 
-        <div class="stock-list" id="product-list">
-          <p style="text-align:center; font-size:12px; color:#666; margin-top:20px;">Cargando datos desde Google Sheets...</p>
+        <div id="product-list" class="flex flex-col gap-3 pb-6">
+          <div class="animate-pulse flex gap-4 bg-white/50 p-4 rounded-3xl">
+            <div class="w-12 h-12 bg-teal-200/50 rounded-2xl"></div>
+            <div class="flex-1 space-y-2 py-1">
+              <div class="h-4 bg-teal-200/50 rounded w-3/4"></div>
+              <div class="h-3 bg-teal-200/50 rounded w-1/2"></div>
+            </div>
+          </div>
         </div>
+
       </div>
 
-    </div>
+    </main>
 
-    <div class="bottom-nav">
-      <div class="nav-item" id="btn-dashboard">
-        <svg class="nav-icon active" viewBox="0 0 24 24" fill="none" stroke="#008080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        <span class="nav-label active">Dashboard</span>
+    <nav class="fixed bottom-6 left-0 right-0 z-50 px-6 gsap-nav">
+      <div class="bg-dark backdrop-blur-xl bg-opacity-90 rounded-full px-6 py-3 flex justify-between items-center shadow-2xl border border-white/10">
+        
+        <button id="btn-dashboard" class="nav-btn group flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500 text-white transition-all duration-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+          <span class="text-sm font-bold w-16 overflow-hidden transition-all duration-300">Panel</span>
+        </button>
+
+        <button id="btn-inventario" class="nav-btn group flex items-center gap-2 px-4 py-2 rounded-full text-gray-400 hover:text-white transition-all duration-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          <span class="text-sm font-bold w-0 overflow-hidden opacity-0 transition-all duration-300">Stock</span>
+        </button>
+
+        <button class="nav-btn group flex items-center gap-2 px-4 py-2 rounded-full text-gray-400 hover:text-white transition-all duration-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          <span class="text-sm font-bold w-0 overflow-hidden opacity-0 transition-all duration-300">Ajustes</span>
+        </button>
+
       </div>
-      <div class="nav-item" id="btn-inventario">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
-        <span class="nav-label">Inventario</span>
-      </div>
-    </div>
+    </nav>
+
   </div>
-</div>
 
-<script>
-// ==========================================
-// 1. LÓGICA DE NAVEGACIÓN (SPA)
-// ==========================================
-const btnDashboard = document.getElementById('btn-dashboard');
-const btnInventario = document.getElementById('btn-inventario');
-const vistaDashboard = document.getElementById('vista-dashboard');
-const vistaInventario = document.getElementById('vista-inventario');
-
-function cambiarVista(vista) {
-  if (vista === 'dashboard') {
-    vistaDashboard.classList.remove('hidden');
-    vistaInventario.classList.add('hidden');
-    btnDashboard.querySelector('svg').setAttribute('stroke', '#008080');
-    btnDashboard.querySelector('span').classList.add('active');
-    btnInventario.querySelector('svg').setAttribute('stroke', '#999');
-    btnInventario.querySelector('span').classList.remove('active');
-  } else {
-    vistaInventario.classList.remove('hidden');
-    vistaDashboard.classList.add('hidden');
-    btnInventario.querySelector('svg').setAttribute('stroke', '#008080');
-    btnInventario.querySelector('span').classList.add('active');
-    btnDashboard.querySelector('svg').setAttribute('stroke', '#999');
-    btnDashboard.querySelector('span').classList.remove('active');
-  }
-}
-
-btnDashboard.addEventListener('click', () => cambiarVista('dashboard'));
-btnInventario.addEventListener('click', () => cambiarVista('inventario'));
-
-// ==========================================
-// 2. LECTURA DE DATOS (GOOGLE SHEETS)
-// ==========================================
-// Link ajustado para descargar formato CSV
-const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShUP7tNJU4WgCtbCh0okTb6VDwm7T1ixUY7IYheSPifL7t0XGSHo5D73ZQ1DoroPtKu67_JkZnFTJI/pub?gid=1721041411&single=true&output=csv';
-
-function cargarDatos() {
-  Papa.parse(GOOGLE_SHEET_CSV_URL, {
-    download: true,
-    header: true,
-    dynamicTyping: true, 
-    complete: function(results) {
-      let data = results.data;
-      // Filtramos filas vacías usando tu columna 'nombre_comercial'
-      data = data.filter(row => row.nombre_comercial); 
-      renderizarApp(data);
-    },
-    error: function(err) {
-      console.log("Error leyendo el Google Sheet. Revisá que esté publicado en la web.");
-      document.getElementById('product-list').innerHTML = '<p style="text-align:center; color:red; margin-top:20px;">Error al cargar la base de datos.</p>';
-    }
-  });
-}
-
-// ==========================================
-// 3. RENDERIZADO DE LA INTERFAZ
-// ==========================================
-function renderizarApp(data) {
-  let capitalTotal = 0;
-  let gananciaTotal = 0;
-  let conteoVigente = 0, conteoProximo = 0, conteoVencido = 0; // Para el gráfico
-  
-  const productList = document.getElementById('product-list');
-  productList.innerHTML = ''; 
-
-  data.forEach(item => {
-    // 1. Mapear tus columnas exactas
-    let nombre = item.nombre_comercial || "Sin nombre";
-    let categoria = item.categoria || "Sin categoría";
-    let stock = Number(item.stock_actual) || 0;
-    let costoUnitario = Number(item.precio_costo) || 0;
-    
-    // Si la hoja ya tiene precio de venta lo usamos, si no, calculamos el 40% (markup)
-    let precioVenta = Number(item.precio_venta) || (costoUnitario * 1.4);
-    
-    // Normalizar el estado por si hay espacios o mayúsculas distintas en Mockaroo
-    let estadoCrudo = (item.estado_vencimiento || "VIGENTE").toString().toUpperCase();
-    let estadoLimpio = "VIGENTE";
-    if (estadoCrudo.includes("VENCIDO")) estadoLimpio = "VENCIDO";
-    else if (estadoCrudo.includes("PRÓXIMO") || estadoCrudo.includes("PROXIMO")) estadoLimpio = "PRÓXIMO";
-
-    // 2. Cálculos Financieros
-    capitalTotal += (costoUnitario * stock);
-    if (estadoLimpio !== "VENCIDO") {
-      gananciaTotal += ((precioVenta - costoUnitario) * stock);
-    }
-
-    // Sumar al gráfico
-    if (estadoLimpio === "VIGENTE") conteoVigente += stock;
-    else if (estadoLimpio === "PRÓXIMO") conteoProximo += stock;
-    else conteoVencido += stock;
-
-    // 3. Estilos de la tarjeta según estado
-    let colorIcono, strokeIcono, claseBadge;
-    let nombreClase = "item-name";
-    let precioClase = "item-price";
-    
-    if (estadoLimpio === "VIGENTE") {
-      colorIcono = "#e8f4f0"; strokeIcono = "#008080"; claseBadge = "sb-green";
-    } else if (estadoLimpio === "PRÓXIMO") {
-      colorIcono = "#fffbeb"; strokeIcono = "#d97706"; claseBadge = "sb-amber";
-    } else {
-      colorIcono = "#fef2f2"; strokeIcono = "#dc2626"; claseBadge = "sb-red";
-      nombreClase += " strike"; precioClase += " strike";
-    }
-
-    const card = document.createElement('div');
-    card.className = "stock-item";
-    if (estadoLimpio === "VENCIDO") card.style.opacity = "0.7";
-
-    card.innerHTML = `
-      <div class="item-icon" style="background:${colorIcono}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${strokeIcono}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
-      </div>
-      <div class="item-body">
-        <div class="${nombreClase}">${nombre}</div>
-        <div class="item-cat">${categoria}</div>
-        <span class="status-badge ${claseBadge}">${estadoLimpio}</span>
-      </div>
-      <div class="item-right">
-        <div class="${precioClase}">$${precioVenta.toLocaleString('es-AR', {maximumFractionDigits: 0})}</div>
-        <div class="item-stock">Stock: ${stock} u.</div>
-      </div>
-    `;
-    productList.appendChild(card);
-  });
-
-  // 4. Actualizar métricas visuales
-  document.getElementById('val-capital').innerText = "$" + capitalTotal.toLocaleString('es-AR', {maximumFractionDigits: 0});
-  document.getElementById('val-ganancia').innerText = "$" + gananciaTotal.toLocaleString('es-AR', {maximumFractionDigits: 0});
-
-  // 5. Actualizar Gráfico de Torta real con los datos
-  actualizarGraficoTorta(conteoVigente, conteoProximo, conteoVencido);
-}
-
-// ==========================================
-// 4. GRÁFICOS (Chart.js)
-// ==========================================
-let miGraficoTorta = null;
-
-function actualizarGraficoTorta(vigente, proximo, vencido) {
-  const total = vigente + proximo + vencido;
-  if (total === 0) return; // Evitar dividir por cero si no hay datos
-
-  const pVigente = Math.round((vigente / total) * 100);
-  const pProximo = Math.round((proximo / total) * 100);
-  const pVencido = Math.round((vencido / total) * 100);
-
-  const ctx = document.getElementById('donutChart');
-  
-  if (miGraficoTorta) {
-    miGraficoTorta.destroy(); // Destruimos el anterior para redibujarlo con los nuevos datos
-  }
-
-  miGraficoTorta = new Chart(ctx, { 
-    type: 'doughnut', 
-    data: { 
-      labels: [`Vigente (${pVigente}%)`, `Próximo (${pProximo}%)`, `Vencido (${pVencido}%)`], 
-      datasets: [{ 
-        data: [vigente, proximo, vencido], 
-        backgroundColor: ['#16a34a', '#d97706', '#dc2626'], 
-        borderWidth: 3 
-      }] 
-    }, 
-    options: { 
-      responsive: true, 
-      maintainAspectRatio: false, 
-      cutout: '62%', 
-      plugins: { legend: { display: false } } 
-    } 
-  });
-}
-
-// Sparklines decorativos
-function sparkline(id, data, color) {
-  const ctx = document.getElementById(id);
-  if (!ctx) return;
-  new Chart(ctx, { type: 'line', data: { labels: data.map((_,i) => i), datasets: [{ data, borderColor: color, borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: color + '22' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } }, animation: { duration: 800 } } });
-}
-sparkline('spark1', [2.1,2.2,2.0,2.3,2.4,2.35,2.5], '#008080');
-sparkline('spark2', [0.85,0.9,0.88,0.95,0.97,0.99,1.0], '#16a34a');
-
-// Arrancar la app
-cargarDatos();
-  
-</script>
+  <script src="script.js"></script>
 </body>
 </html>
